@@ -5,14 +5,14 @@
     "license": "MIT",
     "authors": [
         {
-            "name": "Jajaj ",
+            "name": "workable for laravel v6.",
             "email": "arietimmerman@gmail.com"
         }
     ],
     "require": {
 		"php": "^7.0",
      	"guzzlehttp/guzzle": "~6.0",
-        "laravel/framework": "^6.2"
+        "laravel/framework": "^6.*"
     },
     "autoload": {
         "psr-4": {"ArieTimmerman\\Laravel\\OAuth2\\": "src/"}
