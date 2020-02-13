@@ -1,43 +1,71 @@
 <?php
+/**
+ * @copyright (c) Simian B.V. 2019
+ * @version       1.0.0
+ */
 
 namespace Simianbv\Introspect\Tests;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Request;
 use Orchestra\Testbench\TestCase;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Client;
-use GuzzleHttp\Psr7;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\VerifyAccessToken;
 
-class BasicTest extends TestCase {
+/**
+ * @class   BasicTest
+ * @package Simianbv\Introspect\Tests
+ */
+class BasicTest extends TestCase
+{
 
-	protected function getEnvironmentSetUp($app) {
-		$app ['config']->set ( 'introspect.introspect_token_url', 'https://token_endpoint' );
-		$app ['config']->set ( 'introspect.introspect_introspect_url', 'https://introspect_endpoint' );
-	}
+    /**
+     * @param $app
+     */
+    protected function getEnvironmentSetUp($app)
+    {
+        $app ['config']->set('introspect.introspect_token_url', 'https://token_endpoint');
+        $app ['config']->set('introspect.introspect_introspect_url', 'https://introspect_endpoint');
+    }
 
-	protected function getClientCredentialsTokenEndPoint() {
-		return new Response ( 200, [ ], Psr7\stream_for ( '{
+    /**
+     * @return Response
+     */
+    protected function getClientCredentialsTokenEndPoint()
+    {
+        return new Response (
+            200, [], Psr7\stream_for(
+                   '{
             "access_token":"2YotnFZFEjr1zCsicMWpAA",
             "token_type":"example",
             "expires_in":3600,
             "example_parameter":"example_value"
-        }' ) );
-	}
+        }'
+               )
+        );
+    }
 
-	public function testMissingRequiredScopes() {
-		$this->expectException ( InvalidAccessTokenException::class );
+    /**
+     * @throws InvalidAccessTokenException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidEndpointException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidInputException
+     */
+    public function testMissingRequiredScopes()
+    {
+        $this->expectException(InvalidAccessTokenException::class);
 
-		$middleware = new VerifyAccessToken ();
+        $middleware = new VerifyAccessToken ();
 
-		$mock = new MockHandler ( [
-
-				$this->getClientCredentialsTokenEndPoint (),
-
-				new Response ( 200, [ ], Psr7\stream_for ( '{
+        $mock = new MockHandler(
+            [
+                $this->getClientCredentialsTokenEndPoint(),
+                new Response(
+                    200, [], Psr7\stream_for(
+                           '{
                 "active": true,
                 "client_id": "l238j323ds-23ij4",
                 "username": "jdoe",
@@ -48,30 +76,40 @@ class BasicTest extends TestCase {
                 "exp": 1419356238,
                 "iat": 1419350238,
                 "extension_field": "twenty-seven"
-            }' ) )
-		]
-		 );
+            }'
+                       )
+                ),
+            ]
+        );
 
-		$middleware->setClient ( new Client ( [
-				'handler' => HandlerStack::create ( $mock )
-		] ) );
+        $middleware->setClient(new Client(['handler' => HandlerStack::create($mock),]));
 
-		$request = Request::create ( 'http://example.com/admin', 'GET' );
-		$request->headers->set ( 'Authorization', 'Bearer test123' );
+        $request = Request::create('http://example.com/admin', 'GET');
+        $request->headers->set('Authorization', 'Bearer test123');
 
-		$response = $middleware->handle ( $request, function () {
-			return true;
-		}, "missing_scope" );
-	}
+        $response = $middleware->handle(
+            $request, function () {
+            return true;
+        }, "missing_scope"
+        );
+    }
 
-	public function testRequiredScopePresent() {
-		$middleware = new \ArieTimmerman\Laravel\OAuth2\VerifyAccessToken ();
+    /**
+     * @throws InvalidAccessTokenException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidEndpointException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidInputException
+     */
+    public function testRequiredScopePresent()
+    {
+        $middleware = new VerifyAccessToken ();
+        $mock = new MockHandler (
+            [
 
-		$mock = new MockHandler ( [
+                $this->getClientCredentialsTokenEndPoint(),
 
-				$this->getClientCredentialsTokenEndPoint (),
-
-				new Response ( 200, [ ], Psr7\stream_for ( '{
+                new Response(
+                    200, [], Psr7\stream_for(
+                           '{
                     "active": true,
                     "client_id": "l238j323ds-23ij4",
                     "username": "jdoe",
@@ -82,32 +120,43 @@ class BasicTest extends TestCase {
                     "exp": 1419356238,
                     "iat": 1419350238,
                     "extension_field": "twenty-seven"
-                }' ) )
-		]
-		 );
+                }'
+                       )
+                ),
+            ]
+        );
 
-		$middleware->setClient ( new Client ( [
-				'handler' => HandlerStack::create ( $mock )
-		] ) );
+        $middleware->setClient(new Client(['handler' => HandlerStack::create($mock),]));
 
-		$request = Request::create ( 'http://example.com/admin', 'GET' );
-		$request->headers->set ( 'Authorization', 'Bearer test123' );
+        $request = Request::create('http://example.com/admin', 'GET');
+        $request->headers->set('Authorization', 'Bearer test123');
 
-		$response = $middleware->handle ( $request, function () {
-			return true;
-		}, "dolphin" );
+        $response = $middleware->handle(
+            $request, function () {
+            return true;
+        }, "dolphin"
+        );
 
-		$this->assertTrue ( $response );
-	}
+        $this->assertTrue($response);
+    }
 
-	public function testTokenIsActive() {
-		$middleware = new \ArieTimmerman\Laravel\OAuth2\VerifyAccessToken ();
+    /**
+     * @throws InvalidAccessTokenException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidEndpointException
+     * @throws \Simianbv\Introspect\Exceptions\InvalidInputException
+     */
+    public function testTokenIsActive()
+    {
+        $middleware = new VerifyAccessToken();
 
-		$mock = new MockHandler ( [
+        $mock = new MockHandler (
+            [
 
-				$this->getClientCredentialsTokenEndPoint (),
+                $this->getClientCredentialsTokenEndPoint(),
 
-				new Response ( 200, [ ], Psr7\stream_for ( '{
+                new Response(
+                    200, [], Psr7\stream_for(
+                           '{
                         "active": true,
                         "client_id": "l238j323ds-23ij4",
                         "username": "jdoe",
@@ -117,23 +166,31 @@ class BasicTest extends TestCase {
                         "exp": 1419356238,
                         "iat": 1419350238,
                         "extension_field": "twenty-seven"
-                    }' ) )
-		]
-		 );
+                    }'
+                       )
+                ),
+            ]
+        );
 
-		$middleware->setClient ( new Client ( [
-				'handler' => HandlerStack::create ( $mock )
-		] ) );
+        $middleware->setClient(
+            new Client (
+                [
+                    'handler' => HandlerStack::create($mock),
+                ]
+            )
+        );
 
-		$request = Request::create ( 'http://example.com/admin', 'GET' );
-		$request->headers->set ( 'Authorization', 'Bearer test123' );
+        $request = Request::create('http://example.com/admin', 'GET');
+        $request->headers->set('Authorization', 'Bearer test123');
 
-		$response = $middleware->handle ( $request, function () {
-			return true;
-		} );
+        $response = $middleware->handle(
+            $request, function () {
+            return true;
+        }
+        );
 
-		$this->assertTrue ( $response );
-	}
+        $this->assertTrue($response);
+    }
 
 }
 

@@ -7,6 +7,10 @@
     {
       "name": "Admin",
       "email": "it@simian.nl"
+    },
+    {
+      "name": "Arie Timmerman",
+      "email": "arietimmerman@gmail.com"
     }
   ],
   "require": {
