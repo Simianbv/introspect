@@ -1,7 +1,12 @@
 <?php
 
-namespace ArieTimmerman\Laravel\OAuth2\Exceptions;
+namespace Simianbv\Introspect\Exceptions;
 
-class InvalidInputException extends InvalidAccessTokenException{
-    
+/**
+ * @class   InvalidInputException
+ * @package Simianv\Introspect\Exceptions
+ */
+class InvalidInputException extends InvalidAccessTokenException
+{
+
 }
