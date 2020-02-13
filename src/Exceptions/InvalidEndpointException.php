@@ -4,7 +4,7 @@ namespace Simianbv\Introspect\Exceptions;
 
 /**
  * @class   InvalidEndpointException
- * @package Simianv\Introspect\Exceptions
+ * @package Simianbv\Introspect\Exceptions
  */
 class InvalidEndpointException extends InvalidAccessTokenException
 {

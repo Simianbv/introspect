@@ -6,7 +6,7 @@ use Exception;
 
 /**
  * @class   InvalidAccessTokenException
- * @package Simianv\Introspect\Exceptions
+ * @package Simianbv\Introspect\Exceptions
  */
 class InvalidAccessTokenException extends Exception
 {

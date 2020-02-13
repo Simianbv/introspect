@@ -20,12 +20,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Simianv\\Introspect\\": "src/"
+      "Simianbv\\Introspect\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Simianv\\Introspect\\Tests\\": "tests"
+      "Simianbv\\Introspect\\Tests\\": "tests"
     }
   },
   "require-dev": {
