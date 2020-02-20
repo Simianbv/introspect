@@ -11,6 +11,7 @@ use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
