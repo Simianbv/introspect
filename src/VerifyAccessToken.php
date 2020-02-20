@@ -13,6 +13,7 @@ use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\Exceptions\InvalidEndpointException;
@@ -121,8 +122,9 @@ class VerifyAccessToken
 
                 $response = $this->request(config('introspect.introspect_introspect_url'), $body);
 
-                Log::debug($response);
+                // Log::debug($response);
 
+                // Auth::loginUsingId($response['sub']);
 
 
             } catch (RequestException $exception) {
