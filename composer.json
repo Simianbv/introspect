@@ -1,7 +1,11 @@
 {
   "name": "simianbv/introspect",
   "description": "Laravel Middleware for letting a resource owner verify a OAuth2 access tokens with a remote authorization server",
-  "type": "library",
+  "type": "project",
+  "keywords": [
+    "laravel",
+    "introspect"
+  ],
   "license": "MIT",
   "authors": [
     {
@@ -14,22 +18,22 @@
     }
   ],
   "require": {
-    "php": "^7.0",
+    "php": ">=7.3",
     "guzzlehttp/guzzle": "~6.0",
-    "laravel/framework": "6.*"
+    "laravel/framework": "6.*",
+    "ext-json": "*"
   },
   "autoload": {
     "psr-4": {
       "Simianbv\\Introspect\\": "src/"
     }
   },
-  "autoload-dev": {
-    "psr-4": {
-      "Simianbv\\Introspect\\Tests\\": "tests"
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Simianbv\\Introspect\\ServiceProvider"
+      ]
     }
-  },
-  "require-dev": {
-    "orchestra/testbench": "~3.0"
   },
   "minimum-stability": "beta"
 }
