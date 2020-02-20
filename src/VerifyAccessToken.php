@@ -78,6 +78,7 @@ class VerifyAccessToken
             $this->validateScopes($result, $scopes);
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
+
                 $result = json_decode(( string )$exception->getResponse()->getBody(), true);
                 throw new InvalidAccessTokenException ($result['error'] ?? "Invalid token, unable to get a valid response from the introspection.", null, $exception);
             } else {
