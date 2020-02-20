@@ -45,10 +45,11 @@ INTROSPECT_CLIENT_SECRET="abcdefg"
 INTROSPECT_TOKEN_URL="${INTROSPECT_URL}/oauth/token"
 # The OAuth2 Introspection endpoint https://tools.ietf.org/html/rfc7662
 INTROSPECT_INTROSPECT_URL="${INTROSPECT_URL}/oauth/introspect"
-
 # Optional configuration for requesting an OAuth2 access tokens using the implicit grant flow 
 INTROSPECT_AUTHORIZATION_URL="${INTROSPECT_URL}/oauth/authorize"
 INTROSPECT_REDIRECT_URL=https://my.machine.dom
+# the cache prefix to create a unique key per microservice, defaults to the APP_NAME
+INTROSPECT_CACHE_PREFIX=HR
 ~~~
 
 Now, use the middleware.

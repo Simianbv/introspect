@@ -10,9 +10,9 @@ namespace Simianbv\Introspect;
 use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\Exceptions\InvalidEndpointException;
 use Simianbv\Introspect\Exceptions\InvalidInputException;
@@ -24,10 +24,23 @@ use Simianbv\Introspect\Exceptions\InvalidInputException;
  */
 class VerifyAccessToken
 {
+    const INTROSPECT_ACCESS_TOKEN_KEY = '_access_token';
+
+
     /**
      * @var Client
      */
     private $client = null;
+
+    /**
+     * @var string
+     */
+    protected $cache_prefix = '';
+
+    /**
+     * @var int
+     */
+    protected $max_attempts = 2;
 
     /**
      * Handle an incoming request.
@@ -49,129 +62,112 @@ class VerifyAccessToken
             throw new InvalidInputException ("No Authorization header present");
         }
 
-        $receivedAccessToken = preg_replace('/^Bearer (.*?)$/', '$1', $authorizationHeader);
+        $receivedUserAccessToken = preg_replace('/^Bearer (.*?)$/', '$1', $authorizationHeader);
 
-        # Just to be sure it is really an access token
-        if (strlen($receivedAccessToken) <= 1) {
+        if (strlen($receivedUserAccessToken) <= 1) {
             throw new InvalidInputException ("No Bearer token in the Authorization header present");
         }
 
-        // Now verify the user provided access token
         try {
-            $result = $this->getIntrospect($receivedAccessToken);
-            if (!$result ['active']) {
-                throw new InvalidAccessTokenException ("Invalid token!");
-            } else {
-                if ($scopes != null) {
-                    if (!\is_array($scopes)) {
-                        $scopes = [
-                            $scopes,
-                        ];
-                    }
+            $result = $this->introspect($receivedUserAccessToken);
 
-                    $scopesForToken = explode(" ", $result ['scope']);
-
-                    if (count($misingScopes = array_diff($scopes, $scopesForToken)) > 0) {
-                        throw new InvalidAccessTokenException ("Missing the following required scopes: " . implode(" ,", $misingScopes));
-                    } else {
-                    }
-                }
+            if (!$result['active']) {
+                throw new InvalidAccessTokenException ("Invalid token, token is inactive.");
             }
-        } catch (RequestException $e) {
-            if ($e->hasResponse()) {
-                $result = json_decode(( string )$e->getResponse()->getBody(), true);
 
-                if (isset ($result ['error'])) {
-                    throw new InvalidAccessTokenException ($result ['error'] ['title'] ?? "Invalid token!");
-                } else {
-                    throw new InvalidAccessTokenException ("Invalid token!");
-                }
+            $this->validateScopes($result, $scopes);
+        } catch (RequestException $exception) {
+            if ($exception->hasResponse()) {
+                $result = json_decode(( string )$exception->getResponse()->getBody(), true);
+                throw new InvalidAccessTokenException ($result['error'] ?? "Invalid token, unable to get a valid response from the introspection.", null, $exception);
             } else {
-                throw new InvalidAccessTokenException ($e);
+                throw new InvalidAccessTokenException ($exception, null, $exception);
             }
+        }
+
+
+        if ($stored = Cache::tags(['acl'])->get('acl.user.2')) {
+            // Log::debug($stored);
         }
 
         return $next ($request);
     }
 
     /**
-     * @return Client|null
-     */
-    private function getClient()
-    {
-        if ($this->client == null) {
-            $this->client = new Client();
-        }
-        return $this->client;
-    }
-
-    /**
-     * @param Client $client
-     */
-    public function setClient(Client $client)
-    {
-        $this->client = $client;
-    }
-
-    /**
-     * @param string $accessToken
+     * Perform the actual introspection, pass along the user's Access Token, validate the request using
+     * the microservices' access token and validate the access token is valid.
      *
-     * @return mixed
+     * @param string $userAccessToken
+     *
+     * @return array
      * @throws InvalidEndpointException
      */
-    protected function getIntrospect(string $accessToken)
+    protected function introspect(string $userAccessToken)
     {
-        $guzzle = $this->getClient();
+        $response = ['active' => false];
 
         // @todo: Add the cache driver here to (in)validate the introspection
 
-        // the path to post to
-        $url = config('introspect.introspect_introspect_url');
         $tries = 0;
         do {
             try {
                 $tries++;
-
                 $body = [
-                    'form_params' => [
-                        'token_type_hint' => 'access_token',
-                        // This is the access token for verifying the user's access token
-                        'token' => $accessToken,
-                    ],
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                    ],
+                    'form_params' => ['token_type_hint' => 'access_token', 'token' => $userAccessToken,],
+                    'headers' => ['Authorization' => 'Bearer ' . $this->getServiceAccessToken(),],
                 ];
 
-                $response = $guzzle->post($url, $body);
-            } catch (RequestException $e) {
-                # Access token might have expired, just retry getting one
-                Cache::forget('accessToken');
+                $response = $this->request(config('introspect.introspect_introspect_url'), $body);
 
-                if ($tries == 2) {
-                    throw $e;
+                Log::debug($response);
+
+
+
+            } catch (RequestException $exception) {
+                Cache::forget($this->getServiceCacheKey());
+                if ($tries == $this->maxAttempts()) {
+                    throw $exception;
                 }
             }
-        } while ($tries < 2);
+        } while ($tries < $this->maxAttempts());
 
-        return json_decode(( string )$response->getBody(), true);
+
+        return $response;
     }
 
     /**
-     * Get the Access Token from the request headers.
+     * Validate the scopes, if scopes are provided, check if the scopes given are accessible. If there are missing
+     * scopes, raise a new exception and notify the missing scopes.
      *
-     * @return mixed
+     * @param array        $result
+     * @param string|array $scopes
+     *
+     * @return void
+     * @throws InvalidAccessTokenException
+     */
+    protected function validateScopes(array $result, $scopes): void
+    {
+        if ($scopes != null) {
+            $scopes = !is_array($scopes) ? [$scopes] : $scopes;
+            $scopesForToken = explode(" ", $result['scope']);
+            if (count($misingScopes = array_diff($scopes, $scopesForToken)) > 0) {
+                throw new InvalidAccessTokenException ("Missing the following required scopes: " . implode(" ,", $misingScopes));
+            }
+        }
+    }
+
+    /**
+     * Get the Access Token required by this microservice, it attempts to search for a key in cache, if no key
+     * is found, attempt to validate the microservice against our IDP.
+     *
+     * @return string
      * @throws InvalidEndpointException
      */
-    protected function getAccessToken()
+    protected function getServiceAccessToken(): string
     {
-        $accessToken = Cache::get('accessToken');
+        $microServiceAccessToken = Cache::get($this->getServiceCacheKey());
 
-        // the path to post to
-        $url = config('introspect.introspect_token_url');
-
-        if (!$accessToken) {
-            $guzzle = $this->getClient();
+        if (!$microServiceAccessToken) {
             $body = [
                 'form_params' => [
                     'grant_type' => 'client_credentials',
@@ -180,17 +176,72 @@ class VerifyAccessToken
                     'scope' => '',
                 ],
             ];
+            $result = $this->request(config('introspect.introspect_token_url'), $body);
 
-            $response = $guzzle->post($url, $body);
-            $result = json_decode(( string )$response->getBody(), true);
-
-            if ($result && isset ($result ['access_token'])) {
-                Cache::add('accessToken', $result ['access_token'], intVal($result ['expires_in']) / 60);
-            } else {
-                throw new InvalidEndpointException ("Did not receive an access token");
+            if (!$result || !isset($result['access_token'])) {
+                throw new InvalidEndpointException ("No Access Token received, unable to verify the service.");
             }
+
+            $microServiceAccessToken = $result['access_token'];
+            Cache::add($this->getServiceCacheKey(), $microServiceAccessToken, intval($result['expires_in'] / 60));
         }
 
-        return $accessToken;
+        return $microServiceAccessToken;
     }
+
+    /**
+     * Perform a POST request to the endpoint given by the $url. Post the body array and decode the
+     * response ( we're assuming the response is JSON )
+     *
+     * @param string $url
+     * @param array  $body
+     *
+     * @return array
+     */
+    protected function request(string $url, array $body): array
+    {
+        $guzzle = $this->getClient();
+        $response = $guzzle->post($url, $body);
+        return json_decode(( string )$response->getBody(), true);
+    }
+
+    /**
+     * Return the cache key used by this microservice to store their access tokens,
+     * if no prefix is set, falls back to the slug the APP_NAME environment string.
+     *
+     * @return string
+     */
+    public function getServiceCacheKey()
+    {
+        if ($this->cache_prefix == '') {
+            $this->cache_prefix = config('introspect.introspect_cache_prefix', Str::slug(env('APP_NAME')));
+        }
+
+        return self::INTROSPECT_ACCESS_TOKEN_KEY . '_' . $this->cache_prefix;
+    }
+
+    /**
+     * Return the Guzzle HTTP Client to use our requests with.
+     *
+     * @return Client
+     */
+    private function getClient(): Client
+    {
+        if ($this->client == null) {
+            $this->client = new Client();
+        }
+        return $this->client;
+    }
+
+    /**
+     * Returns the max attempts. This defines the maximum number of tries the service can call the auth service
+     * to verify the request.
+     *
+     * @return int
+     */
+    protected function maxAttempts()
+    {
+        return $this->max_attempts;
+    }
+
 }

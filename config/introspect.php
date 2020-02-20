@@ -7,5 +7,6 @@ return [
     'introspect_introspect_url' => env('INTROSPECT_INTROSPECT_URL', false),
     'introspect_client_id' => env('INTROSPECT_CLIENT_ID', false),
     'introspect_client_secret' => env('INTROSPECT_CLIENT_SECRET', false),
+    'introspect_cache_prefix' => env('INTROSPECT_CACHE_PREFIX', false),
 ];
 
