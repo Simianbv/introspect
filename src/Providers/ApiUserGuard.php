@@ -6,16 +6,23 @@ namespace Simianbv\Introspect\Providers;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 
-
+/**
+ * @class   ApiUserGuard
+ * @package Simianbv\Introspect\Providers
+ */
 class ApiUserGuard implements Guard
 {
+    /**
+     * @var Authenticatable
+     */
+    private $user = null;
 
     /**
      * @inheritDoc
      */
     public function check()
     {
-        // TODO: Implement check() method.
+        return $this->user !== null;
     }
 
     /**
@@ -23,7 +30,7 @@ class ApiUserGuard implements Guard
      */
     public function guest()
     {
-        // TODO: Implement guest() method.
+        return $this->user === null;
     }
 
     /**
@@ -31,7 +38,7 @@ class ApiUserGuard implements Guard
      */
     public function user()
     {
-        // TODO: Implement user() method.
+        return $this->user;
     }
 
     /**
@@ -39,7 +46,7 @@ class ApiUserGuard implements Guard
      */
     public function id()
     {
-        // TODO: Implement id() method.
+        return $this->user->getAuthIdentifier();
     }
 
     /**
@@ -55,7 +62,7 @@ class ApiUserGuard implements Guard
      */
     public function setUser(Authenticatable $user)
     {
-        // TODO: Implement setUser() method.
+        $this->user = $user;
     }
 
 }

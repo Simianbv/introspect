@@ -11,13 +11,14 @@ use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\Exceptions\InvalidEndpointException;
 use Simianbv\Introspect\Exceptions\InvalidInputException;
+use Simianbv\Introspect\Exceptions\NoAccessException;
+use Simianbv\Introspect\Models\ApiUser;
 
 /**
  * @description Middleware for verifying the Bearer OAuth2 access token as provided in the HTTP Authorization-header.
@@ -43,6 +44,20 @@ class VerifyAccessToken
      * @var int
      */
     protected $max_attempts = 2;
+    /**
+     * @var AclVerifier
+     */
+    private $aclVerifier;
+
+    /**
+     * VerifyAccessToken constructor.
+     *
+     * @param AclVerifier $aclVerifier
+     */
+    public function __construct(AclVerifier $aclVerifier)
+    {
+        $this->aclVerifier = $aclVerifier;
+    }
 
     /**
      * Handle an incoming request.
@@ -55,6 +70,7 @@ class VerifyAccessToken
      * @throws InvalidAccessTokenException
      * @throws InvalidEndpointException
      * @throws InvalidInputException
+     * @throws NoAccessException
      */
     public function handle($request, Closure $next, ...$scopes)
     {
@@ -78,9 +94,16 @@ class VerifyAccessToken
             }
 
             $this->validateScopes($result, $scopes);
+
+            if (!$acl = Cache::tags(['acl'])->get('acl.user.' . Auth::id())) {
+                $acl = $this->getAclFromAuthService($receivedUserAccessToken);
+            }
+
+            if (!$this->aclVerifier->verify($request, $acl)) {
+                throw new NoAccessException("Authorization failed, user has no permissions to access this resource");
+            }
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
-
                 $result = json_decode(( string )$exception->getResponse()->getBody(), true);
                 throw new InvalidAccessTokenException ($result['error'] ?? "Invalid token, unable to get a valid response from the introspection.", null, $exception);
             } else {
@@ -88,12 +111,31 @@ class VerifyAccessToken
             }
         }
 
-
-        if ($stored = Cache::tags(['acl'])->get('acl.user.2')) {
-            // Log::debug($stored);
-        }
-
         return $next ($request);
+    }
+
+    /**
+     * If no ACL is found in cache, call out to the auth service directly and retrieve the ACL credentials for this
+     * user, if all is correct, the cache should be set after this call as well.
+     *
+     * @param string $receivedUserAccessToken
+     *
+     * @return mixed|null
+     */
+    private function getAclFromAuthService(string $receivedUserAccessToken)
+    {
+        $body = [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $receivedUserAccessToken,
+            ],
+        ];
+        $response = $this->getClient()->get(config('introspect.introspect_acl_url'), $body);
+        $acl = json_decode(( string )$response->getBody(), true);
+
+        if (is_array($acl)) {
+            return $acl;
+        }
+        return null;
     }
 
     /**
@@ -107,34 +149,36 @@ class VerifyAccessToken
      */
     protected function introspect(string $userAccessToken)
     {
-        $response = ['active' => false];
-
-        // @todo: Add the cache driver here to (in)validate the introspection
-
-        $tries = 0;
-        do {
-            try {
-                $tries++;
-                $body = [
-                    'form_params' => ['token_type_hint' => 'access_token', 'token' => $userAccessToken,],
-                    'headers' => ['Authorization' => 'Bearer ' . $this->getServiceAccessToken(),],
-                ];
-
-                $response = $this->request(config('introspect.introspect_introspect_url'), $body);
-
-                // Log::debug($response);
-
-                // Auth::loginUsingId($response['sub']);
-
-
-            } catch (RequestException $exception) {
-                Cache::forget($this->getServiceCacheKey());
-                if ($tries == $this->maxAttempts()) {
-                    throw $exception;
+        if ($cachedResponse = Cache::tags(['users'])->get($userAccessToken)) {
+            $response = $cachedResponse;
+        } else {
+            $response = ['active' => false];
+            $tries = 0;
+            do {
+                try {
+                    $tries++;
+                    $body = [
+                        'form_params' => ['token_type_hint' => 'access_token', 'token' => $userAccessToken,],
+                        'headers' => ['Authorization' => 'Bearer ' . $this->getServiceAccessToken(),],
+                    ];
+                    $response = $this->request(config('introspect.introspect_introspect_url'), $body);
+                    if ($response['active']) {
+                        Cache::tags(['users'])->put($userAccessToken, $response, now()->addMinutes(5));
+                        $tries++;
+                    }
+                } catch (RequestException $exception) {
+                    Cache::tags(['service'])->forget($this->getServiceCacheKey());
+                    if ($tries == $this->maxAttempts()) {
+                        throw $exception;
+                    }
                 }
-            }
-        } while ($tries < $this->maxAttempts());
+            } while ($tries < $this->maxAttempts());
+        }
 
+        if ($response && $response['active']) {
+            $user = new ApiUser($response);
+            Auth::setUser($user);
+        }
 
         return $response;
     }
@@ -169,7 +213,7 @@ class VerifyAccessToken
      */
     protected function getServiceAccessToken(): string
     {
-        $microServiceAccessToken = Cache::get($this->getServiceCacheKey());
+        $microServiceAccessToken = Cache::tags(['service'])->get($this->getServiceCacheKey());
 
         if (!$microServiceAccessToken) {
             $body = [
@@ -187,7 +231,7 @@ class VerifyAccessToken
             }
 
             $microServiceAccessToken = $result['access_token'];
-            Cache::add($this->getServiceCacheKey(), $microServiceAccessToken, intval($result['expires_in'] / 60));
+            Cache::tags(['service'])->put($this->getServiceCacheKey(), $microServiceAccessToken, intval($result['expires_in'] / 60));
         }
 
         return $microServiceAccessToken;
