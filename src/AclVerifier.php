@@ -61,7 +61,7 @@ class AclVerifier
 
             throw new Exception('No permission tokens found to access this resource');
         } catch (Exception $exception) {
-            throw new NoAccessException('Unable to verify acl permissions, cannot continue', null, $exception);
+            throw new NoAccessException('Unable to verify acl permissions, token given was ' . $token, null, $exception);
         }
     }
 

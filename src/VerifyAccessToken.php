@@ -100,7 +100,7 @@ class VerifyAccessToken
             }
 
             if (!$this->aclVerifier->verify($request, $acl)) {
-                throw new NoAccessException("Authorization failed, user has no permissions to access this resource");
+                throw new NoAccessException("Authorization failed, user has no permissions to access this resource. Token given: " . $token);
             }
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
