@@ -3,6 +3,8 @@
 namespace Simianbv\Introspect\Models;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Log;
+
 
 /**
  * @class   ApiUser
@@ -29,6 +31,11 @@ class ApiUser implements Authenticatable
      * @var string
      */
     protected $email = '';
+
+    /**
+     * @var string
+     */
+    protected $active = '';
 
     /**
      * @var bool
@@ -84,6 +91,19 @@ class ApiUser implements Authenticatable
         return $this->profile;
     }
 
+    public function getAttributes()
+    {
+        return [
+            'id' => $this->id,
+            'given_name' => $this->given_name,
+            'family_name' => $this->family_name,
+            'email' => $this->email,
+            'profile' => $this->profile,
+            'active' => $this->active,
+            'is_employee' => $this->is_employee,
+        ];
+    }
+
     /**
      * @return string|void
      */
@@ -98,6 +118,11 @@ class ApiUser implements Authenticatable
     public function getAuthIdentifier()
     {
         return $this->id;
+    }
+
+    public function __toString()
+    {
+        return (string) $this->getAuthIdentifier();
     }
 
     /**

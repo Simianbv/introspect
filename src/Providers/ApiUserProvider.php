@@ -31,6 +31,7 @@ class ApiUserProvider implements UserProvider
      */
     public function retrieveById($identifier)
     {
+        // $this->http->call('/users/');
         $user = session()->get($identifier);
         return $this->getApiUser($user);
     }

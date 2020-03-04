@@ -32,6 +32,7 @@ class AclVerifier
      */
     public function verify(Request $request, array $acl)
     {
+        $token = null;
         try {
             if ($this->shouldControllerExcludeVerification($request)) {
                 return true;
@@ -61,7 +62,7 @@ class AclVerifier
 
             throw new Exception('No permission tokens found to access this resource');
         } catch (Exception $exception) {
-            throw new NoAccessException('Unable to verify acl permissions, token given was ' . $token, null, $exception);
+            throw new NoAccessException('Unable to verify token, you dont have permissions to access this resource.', null, $exception, $token);
         }
     }
 
