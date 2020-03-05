@@ -9,5 +9,8 @@ return [
     'introspect_client_secret' => env('INTROSPECT_CLIENT_SECRET', false),
     'introspect_cache_prefix' => env('INTROSPECT_CACHE_PREFIX', false),
     'introspect_acl_url' => env('INTROSPECT_ACL_URL', false),
+    'introspect_users_endpoint' => env('INTROSPECT_USERS_ENDPOINT', false),
+    'introspect_employees_endpoint' => env('INTROSPECT_EMPLOYEES_ENDPOINT', false),
+    'introspect_customers_endpoint' => env('INTROSPECT_CUSTOMERS_ENDPOINT', false),
 ];
 

@@ -11,7 +11,6 @@ use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -177,9 +176,8 @@ class VerifyAccessToken
         }
 
         if ($response && $response['active']) {
-            $user = new ApiUser($response);
-            Log::debug("Setting user:");
-            Log::debug(json_encode($user->getAttributes()));
+            $response['id'] = $response['sub'];
+            $user = ApiUser::find($response['sub']);
             Auth::setUser($user);
         }
 

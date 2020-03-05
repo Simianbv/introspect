@@ -3,72 +3,59 @@
 namespace Simianbv\Introspect\Models;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\User as Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Sushi\Sushi;
 
 
 /**
  * @class   ApiUser
  * @package Simianbv\Introspect\Models
  */
-class ApiUser implements Authenticatable
+class ApiUser extends Model implements Authenticatable
 {
-    /**
-     * @var mixed|null
-     */
-    protected $id = null;
 
-    /**
-     * @var string
-     */
-    protected $given_name = '';
-
-    /**
-     * @var string
-     */
-    protected $family_name = '';
-
-    /**
-     * @var string
-     */
-    protected $email = '';
-
-    /**
-     * @var string
-     */
-    protected $active = '';
-
-    /**
-     * @var bool
-     */
-    protected $is_employee = false;
-
-    /**
-     * @var string
-     */
-    protected $profile = '';
-
-    /**
-     * @var array
-     */
-    protected $fields = [];
+    use Sushi;
 
     /**
      * ApiUser constructor.
      *
      * @param array $jwt
      */
-    public function __construct(array $jwt)
+    public function __construct(array $attributes = [])
     {
-        foreach ($jwt as $k => $v) {
-            $this->fields[$k] = $v;
-            if (property_exists($this, $k)) {
-                $this->$k = $v;
+        parent::__construct($attributes);
+    }
+
+    /**
+     * @return array|mixed|null
+     */
+    public function getRows()
+    {
+        $employees = null;
+        $employees = Cache::tags(['employees'])->get('all');
+
+        if (!$employees) {
+            $employees = [];
+            $authorizationHeader = request()->header('Authorization');
+            $headers = [
+                'Authorization' => $authorizationHeader,
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "X-Requested-With" => "xmlHttpRequest",
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->get(config('introspect.introspect_employees_endpoint'));
+
+            if ($response->successful()) {
+                $body = $response->json();
+                $employees = $body['data'];
             }
         }
 
-        if (isset($jwt['sub'])) {
-            $this->setAuthIdentifier($jwt['sub']);
-        }
+        return $employees;
     }
 
     /**
@@ -78,31 +65,9 @@ class ApiUser implements Authenticatable
      */
     public function isEmployee()
     {
-        return $this->is_employee === 1;
+        return $this->getAttribute('is_employee') == 1;
     }
 
-    /**
-     * Returns the profile image associated with the account.
-     *
-     * @return string
-     */
-    public function getProfile()
-    {
-        return $this->profile;
-    }
-
-    public function getAttributes()
-    {
-        return [
-            'id' => $this->id,
-            'given_name' => $this->given_name,
-            'family_name' => $this->family_name,
-            'email' => $this->email,
-            'profile' => $this->profile,
-            'active' => $this->active,
-            'is_employee' => $this->is_employee,
-        ];
-    }
 
     /**
      * @return string|void
@@ -122,7 +87,7 @@ class ApiUser implements Authenticatable
 
     public function __toString()
     {
-        return (string) $this->getAuthIdentifier();
+        return (string)$this->getAuthIdentifier();
     }
 
     /**

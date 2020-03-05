@@ -50,6 +50,10 @@ INTROSPECT_AUTHORIZATION_URL="${INTROSPECT_URL}/oauth/authorize"
 INTROSPECT_REDIRECT_URL=https://my.machine.dom
 # the cache prefix to create a unique key per microservice, defaults to the APP_NAME
 INTROSPECT_CACHE_PREFIX=HR
+# the endpoints for calling in customer/employee or user data
+INTROSPECT_USERS_ENDPOINT="${INTROSPECT_URL}/api/users"
+INTROSPECT_EMPLOYEES_ENDPOINT="${INTROSPECT_URL}/api/employees"
+INTROSPECT_CUSTOMERS_ENDPOINT="${INTROSPECT_URL}/api/customers"
 ~~~
 
 Now, use the middleware.
