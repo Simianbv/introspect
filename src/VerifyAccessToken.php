@@ -13,6 +13,7 @@ use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\Exceptions\InvalidEndpointException;
@@ -105,7 +106,8 @@ class VerifyAccessToken
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
                 $result = json_decode(( string )$exception->getResponse()->getBody(), true);
-                throw new InvalidAccessTokenException ($result['error'] ?? "Invalid token, unable to get a valid response from the introspection.", null, $exception);
+                $errorMessage = $result['error'] && is_string($result['error']) ? $result['error'] : "Invalid token, unable to get a valid response from the introspection.";
+                throw new InvalidAccessTokenException ($errorMessage, null, $exception);
             } else {
                 throw new InvalidAccessTokenException ($exception, null, $exception);
             }
@@ -129,6 +131,7 @@ class VerifyAccessToken
                 'Authorization' => 'Bearer ' . $receivedUserAccessToken,
             ],
         ];
+        Log::debug("calling endpoint (2): " . config('introspect.introspect_acl_url'));
         $response = $this->getClient()->get(config('introspect.introspect_acl_url'), $body);
         $acl = json_decode(( string )$response->getBody(), true);
 
@@ -249,6 +252,7 @@ class VerifyAccessToken
      */
     protected function request(string $url, array $body): array
     {
+        Log::debug("calling endpoint: " . $url);
         $guzzle = $this->getClient();
         $response = $guzzle->post($url, $body);
         return json_decode(( string )$response->getBody(), true);
