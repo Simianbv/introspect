@@ -30,6 +30,7 @@ class ApiUser extends Model implements Authenticatable
 
     /**
      * @return array|mixed|null
+     * @throws \Exception
      */
     public function getRows()
     {
@@ -46,12 +47,20 @@ class ApiUser extends Model implements Authenticatable
                 "X-Requested-With" => "xmlHttpRequest",
             ];
 
-            $response = Http::withHeaders($headers)
-                ->get(config('introspect.introspect_employees_endpoint'));
+            try {
+                $response = Http::withHeaders($headers)
+                    ->get(config('introspect.introspect_employees_endpoint'));
 
-            if ($response->successful()) {
-                $body = $response->json();
-                $employees = $body['data'];
+                if ($response->clientError() || $response->serverError()) {
+                    $response->throw();
+                }
+
+                if ($response->successful()) {
+                    $body = $response->json();
+                    $employees = $body['data'];
+                }
+            } catch (\Exception $exception) {
+                throw new \Exception("Unable to get the users from the auth service");
             }
         }
 

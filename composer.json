@@ -19,6 +19,7 @@
   ],
   "require": {
     "php": ">=7.3",
+    "calebporzio/sushi": "^2.0",
     "guzzlehttp/guzzle": "~6.0",
     "laravel/framework": "6.*|7.*",
     "ext-json": "*"
