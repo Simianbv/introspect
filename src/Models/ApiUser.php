@@ -39,9 +39,11 @@ class ApiUser extends Model implements Authenticatable
 
         if (!$employees) {
             $employees = [];
-            $authorizationHeader = request()->header('Authorization');
+
+            $header = $this->getAuthorizationHeader();
+
             $headers = [
-                'Authorization' => $authorizationHeader,
+                'Authorization' => $header,
                 "Content-Type" => "application/json",
                 "Accept" => "application/json",
                 "X-Requested-With" => "xmlHttpRequest",
@@ -65,6 +67,24 @@ class ApiUser extends Model implements Authenticatable
         }
 
         return $employees;
+    }
+
+    /**
+     * Attempts to return an authorization header.
+     *
+     * @return string
+     */
+    private function getAuthorizationHeader()
+    {
+        if ($header = request()->header('Authorization')) {
+            return $header;
+        }
+
+        if ($token = request('token') && $token !== null) {
+            return 'Bearer ' . $token;
+        }
+
+        return null;
     }
 
     /**
