@@ -62,9 +62,7 @@ class AclVerifier
 
             throw new Exception('No permission tokens found to access this resource');
         } catch (Exception $exception) {
-
-            throw new NoAccessException('Unable to verify token, you dont have permissions to access this resource. ' . $exception->getMessage(), null, $exception, $token);
-
+            throw new NoAccessException('Unable to verify token, you dont have permissions to access this resource.', null, $exception, $token);
         }
     }
 
