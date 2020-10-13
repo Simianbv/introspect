@@ -106,7 +106,7 @@ class AclVerifier
      */
     private function generateAclToken(string $controller, string $action)
     {
-        $replace = ['App\\Http\\Controllers\\', "Api\\", 'Controller', '\\',];
+        $replace = ['App\\Http\\Http\\', "Api\\", 'Controller', '\\',];
         $replaceWith = ['', '', '', '.'];
 
         $controller = strtolower(str_replace($replace, $replaceWith, $controller));
