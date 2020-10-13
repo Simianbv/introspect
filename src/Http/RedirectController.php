@@ -4,7 +4,7 @@
  * @version       1.0.0
  */
 
-namespace Simianbv\JsonSchema\Http;
+namespace Simianbv\Introspect\Http;
 
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
  * @class   ApiController
  * @package Simianbv\JsonSchema\Http
  */
-class ApiController extends Controller
+class RedirectController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
