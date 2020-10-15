@@ -135,7 +135,7 @@ class Introspector
                 throw new InvalidAccessTokenException ($exception, null, $exception);
             }
         } catch (Exception $exception) {
-            throw new InvalidAccessTokenException("Unable to verify user token, cannot continue.", null, $exception);
+            throw new InvalidAccessTokenException("Unable to verify user token, cannot continue: " . $exception->getMessage(), null, $exception);
         }
     }
 
