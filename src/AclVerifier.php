@@ -71,7 +71,7 @@ class AclVerifier
             throw new Exception('No permission tokens found to access this resource');
         } catch (Exception $exception) {
             throw new NoAccessException(
-                'The token to verify is ' . $token . '.
+                'The token to verify is ("' . $token . '").
                 Unable to verify token, You do not have the necessary  token(s) to access this resource.',
                 null,
                 $exception,
@@ -121,8 +121,8 @@ class AclVerifier
 
         Log::debug("Controller & action name is " . $request->route()->getActionName());
 
-        $replace = ['App\\Http\\', "Api\\", 'Controller', '\\',];
-        $replaceWith = ['', '', '', '.'];
+        $replace = ['App\\Http\\', "Api\\", 'Controller', 'Controllers', '\\',];
+        $replaceWith = ['', '', '', '', '.'];
 
         $controller = strtolower(str_replace($replace, $replaceWith, $controller));
 
