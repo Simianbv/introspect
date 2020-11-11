@@ -71,6 +71,8 @@ class ApiUser extends Model implements Authenticatable
             }
         }
 
+        Log::debug($employees);
+
         return $employees;
     }
 
