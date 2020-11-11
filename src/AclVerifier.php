@@ -124,7 +124,7 @@ class AclVerifier
         $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
         $replaceWith = ['', '', '', '', '.'];
 
-        $controller = strtolower(str_replace($replace, $replaceWith, $controller));
+        $controller = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
 
         Log::debug("Controller path is now: " . $controller);
 
