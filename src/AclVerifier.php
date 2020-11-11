@@ -74,7 +74,7 @@ class AclVerifier
         } catch (Exception $exception) {
             throw new NoAccessException(
                 'The token to verify is ' . $token . '.
-                Unable to verify token, You do not have the necessary token(s) to access this resource.',
+                Unable to verify token, You do not have the necessary  token(s) to access this resource.',
                 null,
                 $exception,
                 $token);
