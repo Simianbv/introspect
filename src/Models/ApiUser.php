@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\User as Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Sushi\Sushi;
 
 
@@ -23,7 +24,7 @@ class ApiUser extends Model implements Authenticatable
      *
      * @param array $jwt
      */
-    public function __construct(array $attributes = [])
+    public function __construct (array $attributes = [])
     {
         parent::__construct($attributes);
     }
@@ -32,20 +33,23 @@ class ApiUser extends Model implements Authenticatable
      * @return array|mixed|null
      * @throws \Exception
      */
-    public function getRows()
+    public function getRows ()
     {
         $employees = null;
         $employees = Cache::tags(['employees'])->get('all');
 
+        Log::debug("Introspect\Models\ApiUser: Attempting to retrieve employees from cache");
+
         if (!$employees) {
+            Log::debug("Introspect\Models\ApiUser: No employees found in cache");
             $employees = [];
 
             $header = $this->getAuthorizationHeader();
 
             $headers = [
-                'Authorization' => $header,
-                "Content-Type" => "application/json",
-                "Accept" => "application/json",
+                'Authorization'    => $header,
+                "Content-Type"     => "application/json",
+                "Accept"           => "application/json",
                 "X-Requested-With" => "xmlHttpRequest",
             ];
 
@@ -58,6 +62,7 @@ class ApiUser extends Model implements Authenticatable
                 }
 
                 if ($response->successful()) {
+                    Log::debug("Introspect\Models\ApiUser: Retrieved employees from cache, storing to cache");
                     $body = $response->json();
                     $employees = $body['data'];
                 }
@@ -74,7 +79,7 @@ class ApiUser extends Model implements Authenticatable
      *
      * @return string
      */
-    private function getAuthorizationHeader()
+    private function getAuthorizationHeader ()
     {
         if ($header = request()->header('Authorization')) {
             return $header;
@@ -92,7 +97,7 @@ class ApiUser extends Model implements Authenticatable
      *
      * @return bool
      */
-    public function isEmployee()
+    public function isEmployee ()
     {
         return $this->getAttribute('is_employee') == 1;
     }
@@ -101,7 +106,7 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @return string|void
      */
-    public function getAuthIdentifierName()
+    public function getAuthIdentifierName ()
     {
         return $this->given_name . ' ' . $this->family_name;
     }
@@ -109,12 +114,12 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @return mixed|void
      */
-    public function getAuthIdentifier()
+    public function getAuthIdentifier ()
     {
         return $this->id;
     }
 
-    public function __toString()
+    public function __toString ()
     {
         return (string)$this->getAuthIdentifier();
     }
@@ -124,7 +129,7 @@ class ApiUser extends Model implements Authenticatable
      *
      * @return void
      */
-    protected function setAuthIdentifier($id): void
+    protected function setAuthIdentifier ($id): void
     {
         $this->id = $id;
     }
@@ -132,7 +137,7 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @return string|void
      */
-    public function getAuthPassword()
+    public function getAuthPassword ()
     {
         // TODO: Implement getAuthPassword() method.
     }
@@ -140,7 +145,7 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @return string|void
      */
-    public function getRememberToken()
+    public function getRememberToken ()
     {
         // TODO: Implement getAuthPassword() method.
     }
@@ -148,7 +153,7 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @param string $value
      */
-    public function setRememberToken($value)
+    public function setRememberToken ($value)
     {
         // TODO: Implement setRememberToken() method.
     }
@@ -156,7 +161,7 @@ class ApiUser extends Model implements Authenticatable
     /**
      * @return string|void
      */
-    public function getRememberTokenName()
+    public function getRememberTokenName ()
     {
         // TODO: Implement getRememberTokenName() method.
     }
