@@ -52,9 +52,7 @@ class AclVerifier
                 throw new AuthenticationException("The user we're trying to authenticate is not an employee.");
             }
 
-            [$controller, $action] = explode('@', $request->route()->getActionName());
-
-            $token = $this->generateAclToken($controller, $action);
+            $token = $this->generateAclToken($request);
 
             if (isset($acl['tokens']) && in_array($token, $acl['tokens'])) {
                 return true;
@@ -114,17 +112,21 @@ class AclVerifier
     /**
      * Generate the token based on the name of the controller and the action.
      *
-     * @param string $controller
-     * @param string $action
-     *
+     * @param Request $request
      * @return string
      */
-    private function generateAclToken (string $controller, string $action)
+    private function generateAclToken (Request $request)
     {
-        $replace = ['App\\Http\\Http\\', "Api\\", 'Controller', '\\',];
+        [$controller, $action] = explode('@', $request->route()->getActionName());
+
+        Log::debug("Controller & action name is " . $request->route()->getActionName());
+
+        $replace = ['App\\Http\\', "Api\\", 'Controller', '\\',];
         $replaceWith = ['', '', '', '.'];
 
         $controller = strtolower(str_replace($replace, $replaceWith, $controller));
+
+        Log::debug("Controller path is now: " . $controller);
 
         return $controller . '.' . $this->mapAction($action);
     }
