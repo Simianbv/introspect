@@ -25,12 +25,12 @@ class AclVerifier
      * Verify the user has access to the given resource based on the Controller.
      *
      * @param Request $request
-     * @param array   $acl
+     * @param array $acl
      *
      * @return bool
      * @throws NoAccessException
      */
-    public function verify(Request $request, array $acl)
+    public function verify (Request $request, array $acl)
     {
         $token = '';
         try {
@@ -45,11 +45,11 @@ class AclVerifier
             $user = Auth::user();
 
             if ($user == null || !$user) {
-                throw new AuthenticationException("No user found, cannot authorize this action");
+                throw new AuthenticationException("No user found, cannot authorize this action.");
             }
 
             if (!$user->isEmployee()) {
-                throw new AuthenticationException("User is not an employee");
+                throw new AuthenticationException("The user we're trying to authenticate is not an employee.");
             }
 
             [$controller, $action] = explode('@', $request->route()->getActionName());
@@ -60,9 +60,24 @@ class AclVerifier
                 return true;
             }
 
+            if (!isset($acl['tokens'])) {
+                throw new Exception("No tokens were found in the ACL stack,
+                 are you sure the user has a role and has granted permissions?");
+            }
+
+            if (!in_array($token, $acl['tokens'])) {
+                throw new NoAccessException("The token given ('$token'), was 
+                not found in your ACL list, unable to grant access without the token.");
+            }
+
             throw new Exception('No permission tokens found to access this resource');
         } catch (Exception $exception) {
-            throw new NoAccessException('Unable to verify token, you dont have permissions to access this resource.', null, $exception, $token);
+            throw new NoAccessException(
+                'The token to verify is ' . $token . '.
+                Unable to verify token, You do not have the necessary token(s) to access this resource.',
+                null,
+                $exception,
+                $token);
         }
     }
 
@@ -74,7 +89,7 @@ class AclVerifier
      *
      * @return bool
      */
-    private function isDeveloper(array $acl)
+    private function isDeveloper (array $acl)
     {
         return isset($acl['roles']) && in_array('developer', $acl['roles']) && env('APP_ENV') !== 'production';
     }
@@ -86,7 +101,7 @@ class AclVerifier
      *
      * @return bool
      */
-    private function shouldControllerExcludeVerification(Request $request)
+    private function shouldControllerExcludeVerification (Request $request)
     {
         $implementations = class_implements($request->route()->getController());
 
@@ -104,7 +119,7 @@ class AclVerifier
      *
      * @return string
      */
-    private function generateAclToken(string $controller, string $action)
+    private function generateAclToken (string $controller, string $action)
     {
         $replace = ['App\\Http\\Http\\', "Api\\", 'Controller', '\\',];
         $replaceWith = ['', '', '', '.'];
@@ -122,7 +137,7 @@ class AclVerifier
      *
      * @return string
      */
-    private function mapAction($action)
+    private function mapAction ($action)
     {
         switch ($action) {
             case 'create':
