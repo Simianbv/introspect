@@ -121,7 +121,7 @@ class AclVerifier
 
         Log::debug("Controller & action name is " . $request->route()->getActionName());
 
-        $replace = ['App\\Http\\', "Api\\", 'Controller', 'Controllers', '\\',];
+        $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
         $replaceWith = ['', '', '', '', '.'];
 
         $controller = strtolower(str_replace($replace, $replaceWith, $controller));
