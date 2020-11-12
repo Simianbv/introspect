@@ -16,6 +16,7 @@ use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Simianbv\Introspect\Exceptions\InvalidAccessTokenException;
 use Simianbv\Introspect\Exceptions\InvalidEndpointException;
@@ -129,7 +130,10 @@ class Introspector
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
                 $result = json_decode(( string )$exception->getResponse()->getBody(), true);
-                $errorMessage = $result['error'] && is_string($result['error']) ? $result['error'] : "Invalid token, unable to get a valid response from the introspection.";
+                Log::debug($result);
+                $errorMessage = isset($result['error']) && is_string($result['error'])
+                    ? $result['error']
+                    : "Invalid token, unable to get a valid response from the introspection.";
                 throw new InvalidAccessTokenException ($errorMessage, null, $exception);
             } else {
                 throw new InvalidAccessTokenException ($exception, null, $exception);

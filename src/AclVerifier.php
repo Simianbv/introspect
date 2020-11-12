@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Simianbv\Introspect\Contracts\RequiresAclValdation;
 use Simianbv\Introspect\Exceptions\NoAccessException;
 
@@ -64,7 +65,7 @@ class AclVerifier
             }
 
             if (!in_array($token, $acl['tokens'])) {
-                throw new NoAccessException("The token given ('$token'), was 
+                throw new NoAccessException("The token given ('$token'), was
                 not found in your ACL list, unable to grant access without the token.");
             }
 
@@ -72,7 +73,7 @@ class AclVerifier
         } catch (Exception $exception) {
             throw new NoAccessException(
                 'The token to verify is ("' . $token . '").
-                Unable to verify token, You do not have the necessary  token(s) to access this resource.',
+                Unable to verify token, You do not have the necessary  token(s) to access this resource. The previous message is: ' . $exception->getMessage(),
                 null,
                 $exception,
                 $token);
@@ -119,16 +120,33 @@ class AclVerifier
     {
         [$controller, $action] = explode('@', $request->route()->getActionName());
 
-        Log::debug("Controller & action name is " . $request->route()->getActionName());
+        Log::debug("Introspect\AclVerifier: Controller & action name is " . $request->route()->getActionName());
 
         $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
         $replaceWith = ['', '', '', '', '.'];
 
-        $controller = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
+        $tokenGroup = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
 
-        Log::debug("Controller path is now: " . $controller);
+        Log::debug("Introspect\AclVerifier: acl token: " . $controller);
 
-        return $controller . '.' . $this->mapAction($action);
+        if ($tokenGroup == 'simianbv.jsonschema.http.schema') {
+            return $this->getAclTokenByJsonSchema($request);
+        }
+
+        return $tokenGroup . '.' . $this->mapAction($action);
+    }
+
+    /**
+     * @param Request $request
+     * @return string
+     */
+    private function getAclTokenByJsonSchema ($request)
+    {
+        $url = trim(rtrim($request->fullUrl(), '/'), '/');
+        $args = explode('/', $url);
+        $namespace = $args[count($args) - 2];
+        $scope = Str::singular(str_replace('-', '', $args[count($args) - 1]));
+        return $namespace . '.' . $scope . '.access';
     }
 
     /**
