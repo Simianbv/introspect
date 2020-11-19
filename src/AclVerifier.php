@@ -158,11 +158,7 @@ class AclVerifier
      */
     private function getAclTokenBySearch ($request)
     {
-        $url = trim(rtrim($request->fullUrl(), '/'), '/');
-        $args = explode('/', $url);
-        $namespace = $args[count($args) - 2];
-        $scope = Str::singular(str_replace('-', '', $args[count($args) - 1]));
-        return $namespace . '.' . $scope . '.access';
+        return 'filter.access';
     }
 
 
