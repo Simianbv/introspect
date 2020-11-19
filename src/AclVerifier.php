@@ -132,6 +132,9 @@ class AclVerifier
         if ($tokenGroup == 'simianbv.jsonschema.http.schema') {
             return $this->getAclTokenByJsonSchema($request);
         }
+        if ($tokenGroup == 'simianbv.search.http.filter') {
+            return $this->getAclTokenBySearch($request);
+        }
 
         return $tokenGroup . '.' . $this->mapAction($action);
     }
@@ -148,6 +151,20 @@ class AclVerifier
         $scope = Str::singular(str_replace('-', '', $args[count($args) - 1]));
         return $namespace . '.' . $scope . '.access';
     }
+
+    /**
+     * @param Request $request
+     * @return string
+     */
+    private function getAclTokenBySearch ($request)
+    {
+        $url = trim(rtrim($request->fullUrl(), '/'), '/');
+        $args = explode('/', $url);
+        $namespace = $args[count($args) - 2];
+        $scope = Str::singular(str_replace('-', '', $args[count($args) - 1]));
+        return $namespace . '.' . $scope . '.access';
+    }
+
 
     /**
      * Map the default resource actions to the permissions we defined as default permissions for each group.
