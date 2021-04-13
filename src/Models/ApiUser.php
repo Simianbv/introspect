@@ -77,15 +77,20 @@ class ApiUser extends Model implements Authenticatable
     /**
      * Attempts to return an authorization header.
      *
+     * @param string|null $token
      * @return string
      */
-    private function getAuthorizationHeader ()
+    private function getAuthorizationHeader ($token = null)
     {
+        if ($token) {
+            return 'Bearer ' . $token;
+        }
+
         if ($header = request()->header('Authorization')) {
             return $header;
         }
 
-        if ($token = request('token') && $token !== null) {
+        if ($token = request('token')) {
             return 'Bearer ' . $token;
         }
 
