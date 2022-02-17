@@ -6,7 +6,6 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\User as Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Sushi\Sushi;
 
 
@@ -38,10 +37,7 @@ class ApiUser extends Model implements Authenticatable
         $employees = null;
         $employees = Cache::tags(['employees'])->get('all');
 
-        Log::debug("Introspect\Models\ApiUser: Attempting to retrieve employees from cache");
-
         if (!$employees) {
-            Log::debug("Introspect\Models\ApiUser: No employees found in cache");
             $employees = [];
 
             $header = $this->getAuthorizationHeader();
@@ -62,7 +58,6 @@ class ApiUser extends Model implements Authenticatable
                 }
 
                 if ($response->successful()) {
-                    Log::debug("Introspect\Models\ApiUser: Retrieved employees from cache, storing to cache");
                     $body = $response->json();
                     $employees = $body['data'];
                 }

@@ -14,7 +14,6 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Simianbv\Introspect\Contracts\RequiresAclValdation;
 use Simianbv\Introspect\Exceptions\NoAccessException;
@@ -120,14 +119,10 @@ class AclVerifier
     {
         [$controller, $action] = explode('@', $request->route()->getActionName());
 
-        Log::debug("Introspect\AclVerifier: Controller & action name is " . $request->route()->getActionName());
-
         $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
         $replaceWith = ['', '', '', '', '.'];
 
         $tokenGroup = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
-
-        Log::debug("Introspect\AclVerifier: acl token: " . $controller);
 
         if ($tokenGroup == 'simianbv.jsonschema.http.schema') {
             return $this->getAclTokenByJsonSchema($request);
