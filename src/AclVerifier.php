@@ -115,8 +115,11 @@ class AclVerifier
      * @param Request $request
      * @return string
      */
-    private function generateAclToken (Request $request)
+    public function generateAclToken (Request $request = null)
     {
+        if(!$request){
+            $request = request();
+        }
         [$controller, $action] = explode('@', $request->route()->getActionName());
 
         $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];

@@ -67,11 +67,11 @@ class Introspector
     /**
      * Introspector constructor.
      *
-     * @param Request     $request
+     * @param Request $request
      * @param AclVerifier $verifier
-     * @param null        $userToken
+     * @param null $userToken
      */
-    public function __construct($userToken = null, Request $request = null)
+    public function __construct ($userToken = null, Request $request = null)
     {
         if (!$request) {
             $request = request();
@@ -94,7 +94,7 @@ class Introspector
      * @throws InvalidInputException
      * @throws Exception
      */
-    public function handle($receivedUserAccessToken = null, array $scopes = [])
+    public function handle ($receivedUserAccessToken = null, array $scopes = [])
     {
         if (!$receivedUserAccessToken) {
             $authorizationHeader = $this->request->header('Authorization');
@@ -113,10 +113,11 @@ class Introspector
         }
 
         try {
+            $token = $this->verifier->generateAclToken();
             $result = $this->introspect($this->user_access_token);
 
             if (!$result['active']) {
-                throw new InvalidAccessTokenException ("Invalid token, token is inactive.");
+                throw new InvalidAccessTokenException ("Invalid token, token is inactive.", null, null, $token);
             }
 
             if (!empty($scopes)) {
@@ -132,12 +133,12 @@ class Introspector
                 $errorMessage = isset($result['error']) && is_string($result['error'])
                     ? $result['error']
                     : "Invalid token, unable to get a valid response from the introspection.";
-                throw new InvalidAccessTokenException ($errorMessage, null, $exception);
+                throw new InvalidAccessTokenException ($errorMessage, null, $exception, $token);
             } else {
-                throw new InvalidAccessTokenException ($exception, null, $exception);
+                throw new InvalidAccessTokenException ($exception, null, $exception, $token);
             }
         } catch (Exception $exception) {
-            throw new InvalidAccessTokenException("Unable to verify user token, cannot continue: " . $exception->getMessage(), null, $exception);
+            throw new InvalidAccessTokenException("Unable to verify user token, cannot continue: " . $exception->getMessage(), null, $exception, $token);
         }
     }
 
@@ -150,7 +151,7 @@ class Introspector
      * @return array
      * @throws InvalidEndpointException
      */
-    protected function introspect(string $userAccessToken)
+    protected function introspect (string $userAccessToken)
     {
         if ($cachedResponse = Cache::tags(['users'])->get($userAccessToken)) {
             $response = $cachedResponse;
@@ -162,7 +163,7 @@ class Introspector
                     $tries++;
                     $body = [
                         'form_params' => ['token_type_hint' => 'access_token', 'token' => $userAccessToken,],
-                        'headers' => ['Authorization' => 'Bearer ' . $this->getServiceAccessToken(),],
+                        'headers'     => ['Authorization' => 'Bearer ' . $this->getServiceAccessToken(),],
                     ];
                     $response = $this->performRequest(config('introspect.introspect_introspect_url'), $body);
                     if ($response['active']) {
@@ -194,17 +195,17 @@ class Introspector
      * @return string
      * @throws InvalidEndpointException
      */
-    protected function getServiceAccessToken(): string
+    protected function getServiceAccessToken (): string
     {
         $microServiceAccessToken = Cache::tags(['service'])->get($this->getServiceCacheKey());
 
         if (!$microServiceAccessToken) {
             $body = [
                 'form_params' => [
-                    'grant_type' => 'client_credentials',
-                    'client_id' => config('introspect.introspect_client_id'),
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => config('introspect.introspect_client_id'),
                     'client_secret' => config('introspect.introspect_client_secret'),
-                    'scope' => '',
+                    'scope'         => '',
                 ],
             ];
             $result = $this->performRequest(config('introspect.introspect_token_url'), $body);
@@ -226,7 +227,7 @@ class Introspector
      *
      * @return string
      */
-    public function getServiceCacheKey()
+    public function getServiceCacheKey ()
     {
         if ($this->cache_prefix == '') {
             $this->cache_prefix = config('introspect.introspect_cache_prefix', Str::slug(env('APP_NAME')));
@@ -239,21 +240,21 @@ class Introspector
      * Validate the scopes, if scopes are provided, check if the scopes given are accessible. If there are missing
      * scopes, raise a new exception and notify the missing scopes.
      *
-     * @param array        $result
+     * @param array $result
      * @param string|array $scopes
      *
      * @return void
      * @throws InvalidAccessTokenException
      */
-    protected function validateScopes(array $result, $scopes): void
+    protected function validateScopes (array $result, $scopes): void
     {
         if ($scopes != null) {
             $scopes = !is_array($scopes) ? [$scopes] : $scopes;
             $scopesForToken = explode(" ", $result['scope']);
             $missingScopes = array_diff($scopes, $scopesForToken);
-
+            $token = $this->verifier->generateAclToken();
             if (count($missingScopes) > 0) {
-                throw new InvalidAccessTokenException ("Missing the following required scopes: " . implode(" ,", $missingScopes));
+                throw new InvalidAccessTokenException ("Missing the following required scopes: " . implode(" ,", $missingScopes), null, null, $token);
             }
         }
     }
@@ -266,7 +267,7 @@ class Introspector
      *
      * @return mixed|null
      */
-    private function getAclFromAuthService(string $receivedUserAccessToken)
+    private function getAclFromAuthService (string $receivedUserAccessToken)
     {
         $acl = Cache::tags(['acl'])->get('acl.user.' . Auth::id());
 
@@ -288,11 +289,11 @@ class Introspector
      * response ( we're assuming the response is JSON )
      *
      * @param string $url
-     * @param array  $body
+     * @param array $body
      *
      * @return array
      */
-    protected function performRequest(string $url, array $body): array
+    protected function performRequest (string $url, array $body): array
     {
         $guzzle = $this->getClient();
         $response = $guzzle->post($url, $body);
@@ -305,7 +306,7 @@ class Introspector
      *
      * @return int
      */
-    protected function getMaxAttempts()
+    protected function getMaxAttempts ()
     {
         return $this->max_attempts;
     }
@@ -315,7 +316,7 @@ class Introspector
      *
      * @return Client
      */
-    private function getClient(): Client
+    private function getClient (): Client
     {
         return $this->client;
     }
@@ -325,7 +326,7 @@ class Introspector
      *
      * @return Request
      */
-    private function getRequest()
+    private function getRequest ()
     {
         return $this->request;
     }
