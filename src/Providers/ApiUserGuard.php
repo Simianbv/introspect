@@ -40,6 +40,14 @@ class ApiUserGuard implements Guard
     {
         return $this->user;
     }
+    
+    /**
+     * @inheritDoc
+     */
+    public function hasUser()
+    {
+        return $this->user !== null;
+    }
 
     /**
      * @inheritDoc
