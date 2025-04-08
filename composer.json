@@ -18,7 +18,7 @@
     }
   ],
   "require": {
-    "php": ">=7.3|^8.0|^8.1",
+    "php": ">=7.3|^8.0|^8.1|^8.2|^8.3",
     "calebporzio/sushi": "^2.0",
     "guzzlehttp/guzzle": "~6.0|~7.0",
     "ext-json": "*"
