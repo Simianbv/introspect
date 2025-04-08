@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\User as Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Sushi\Sushi;
 
 
@@ -35,7 +36,7 @@ class ApiUser extends Model implements Authenticatable
     public function getRows ()
     {
         $employees = null;
-        $employees = Cache::tags(['employees'])->get('all');
+        $employees = Cache::get('employees');
 
         if (!$employees) {
             $employees = [];
@@ -62,7 +63,9 @@ class ApiUser extends Model implements Authenticatable
                     $employees = $body['data'];
                 }
             } catch (\Exception $exception) {
-                throw new \Exception("Unable to get the users from the auth service");
+                Log::error("Unable to get the users from the auth service");
+                Log::error($exception->getMessage());
+                $employees = [];
             }
         }
 
