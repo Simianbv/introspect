@@ -117,21 +117,27 @@ class AclVerifier
      */
     public function generateAclToken (Request $request = null)
     {
-        if(!$request){
+        if (!$request) {
             $request = request();
         }
         [$controller, $action] = explode('@', $request->route()->getActionName());
 
-        $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
-        $replaceWith = ['', '', '', '', '.'];
-
-        $tokenGroup = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
-
-        if ($tokenGroup == 'simianbv.jsonschema.http.schema') {
-            return $this->getAclTokenByJsonSchema($request);
+        $tokenGroup = null;
+        if (class_exists($controller) && property_exists($controller, 'tokenGroup')) {
+            $tokenGroup = $controller::$tokenGroup;
         }
-        if ($tokenGroup == 'simianbv.search.http.filter') {
-            return $this->getAclTokenBySearch($request);
+        if (!$tokenGroup) {
+            $replace = ['App\\Http\\', "Api\\", 'Controllers', 'Controller', '\\',];
+            $replaceWith = ['', '', '', '', '.'];
+
+            $tokenGroup = trim(rtrim(strtolower(str_replace($replace, $replaceWith, $controller)), '.'), '.');
+
+            if ($tokenGroup == 'simianbv.jsonschema.http.schema') {
+                return $this->getAclTokenByJsonSchema($request);
+            }
+            if ($tokenGroup == 'simianbv.search.http.filter') {
+                return $this->getAclTokenBySearch($request);
+            }
         }
 
         return $tokenGroup . '.' . $this->mapAction($action);
