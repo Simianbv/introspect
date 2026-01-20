@@ -1,14 +1,6 @@
 <?php
-/**
- * PhpStorm
- * @user    merijn
- * @date    30/04/2020
- * @time    14:15
- * @version 1.0
- */
 
 namespace Simianbv\Introspect;
-
 
 use Exception;
 use GuzzleHttp\Client;
@@ -22,55 +14,22 @@ use Simianbv\Introspect\Exceptions\InvalidEndpointException;
 use Simianbv\Introspect\Exceptions\InvalidInputException;
 use Simianbv\Introspect\Models\ApiUser;
 
-/**
- * Class Introspector
- * @package Simianbv\Introspect
- */
 class Introspector
 {
-
-    /**
-     * @var string
-     */
     const INTROSPECT_ACCESS_TOKEN_KEY = '_access_token';
 
-    /**
-     * @var AclVerifier
-     */
-    protected $verifier;
+    protected  AclVerifier $verifier;
 
-    /**
-     * @var Request
-     */
-    private $request;
+    private Request $request;
 
-    /**
-     * @var string
-     */
-    private $user_access_token;
+    private string $user_access_token;
 
-    /**
-     * @var Client
-     */
-    private $client;
+    private Client $client;
 
-    /**
-     * @var string
-     */
-    protected $cache_prefix = '';
+    protected string $cache_prefix = '';
 
-    /**
-     * @var int
-     */
-    protected $max_attempts = 2;
-
-    /**
-     * Introspector constructor.
-     *
-     * @param Request $request
-     * @param AclVerifier $verifier
-     * @param null $userToken
-     */
+    protected int $max_attempts = 2;
+    
     public function __construct ($userToken = null, Request $request = null)
     {
         if (!$request) {
@@ -87,14 +46,11 @@ class Introspector
     }
 
     /**
-     * @param      $scopes
-     * @param null $receivedUserAccessToken
-     *
      * @throws InvalidAccessTokenException
      * @throws InvalidInputException
      * @throws Exception
      */
-    public function handle ($receivedUserAccessToken = null, array $scopes = [])
+    public function handle (string $receivedUserAccessToken = null, array $scopes = [])
     {
         if (!$receivedUserAccessToken) {
             $authorizationHeader = $this->request->header('Authorization');
@@ -143,17 +99,11 @@ class Introspector
     }
 
     /**
-     * Perform the actual introspection, pass along the user's Access Token, validate the request using
-     * the microservices' access token and validate the access token is valid.
-     *
-     * @param string $userAccessToken
-     *
-     * @return array
      * @throws InvalidEndpointException
      */
-    protected function introspect (string $userAccessToken)
+    protected function introspect (string $userAccessToken): array
     {
-        if ($cachedResponse = Cache::tags(['users'])->get($userAccessToken)) {
+        if ($cachedResponse = Cache::get($this->cacheKeyUserToken($userAccessToken))) {
             $response = $cachedResponse;
         } else {
             $response = ['active' => false];
@@ -167,11 +117,11 @@ class Introspector
                     ];
                     $response = $this->performRequest(config('introspect.introspect_introspect_url'), $body);
                     if ($response['active']) {
-                        Cache::tags(['users'])->put($userAccessToken, $response, now()->addMinutes(5));
+                        Cache::put($this->cacheKeyUserToken($userAccessToken), $response, now()->addMinutes(5));
                         $tries++;
                     }
                 } catch (RequestException $exception) {
-                    Cache::tags(['service'])->forget($this->getServiceCacheKey());
+                    Cache::forget($this->cacheKeyServiceToken($this->getServiceCacheKey()));
                     if ($tries == $this->getMaxAttempts()) {
                         throw $exception;
                     }
@@ -188,16 +138,9 @@ class Introspector
         return $response;
     }
 
-    /**
-     * Get the Access Token required by this microservice, it attempts to search for a key in cache, if no key
-     * is found, attempt to validate the microservice against our IDP.
-     *
-     * @return string
-     * @throws InvalidEndpointException
-     */
     protected function getServiceAccessToken (): string
     {
-        $microServiceAccessToken = Cache::tags(['service'])->get($this->getServiceCacheKey());
+        $microServiceAccessToken = Cache::get($this->cacheKeyServiceToken($this->getServiceCacheKey()));
 
         if (!$microServiceAccessToken) {
             $body = [
@@ -215,19 +158,17 @@ class Introspector
             }
 
             $microServiceAccessToken = $result['access_token'];
-            Cache::tags(['service'])->put($this->getServiceCacheKey(), $microServiceAccessToken, intval($result['expires_in'] / 60));
+            Cache::put(
+                $this->cacheKeyServiceToken($this->getServiceCacheKey()),
+                $microServiceAccessToken,
+                intval($result['expires_in'] / 60)
+            );
         }
 
         return $microServiceAccessToken;
     }
-
-    /**
-     * Return the cache key used by this microservice to store their access tokens,
-     * if no prefix is set, falls back to the slug the APP_NAME environment string.
-     *
-     * @return string
-     */
-    public function getServiceCacheKey ()
+    
+    public function getServiceCacheKey (): string 
     {
         if ($this->cache_prefix == '') {
             $this->cache_prefix = config('introspect.introspect_cache_prefix', Str::slug(env('APP_NAME')));
@@ -237,16 +178,9 @@ class Introspector
     }
 
     /**
-     * Validate the scopes, if scopes are provided, check if the scopes given are accessible. If there are missing
-     * scopes, raise a new exception and notify the missing scopes.
-     *
-     * @param array $result
-     * @param string|array $scopes
-     *
-     * @return void
      * @throws InvalidAccessTokenException
      */
-    protected function validateScopes (array $result, $scopes): void
+    protected function validateScopes (array $result, array|string $scopes): void
     {
         if ($scopes != null) {
             $scopes = !is_array($scopes) ? [$scopes] : $scopes;
@@ -259,17 +193,9 @@ class Introspector
         }
     }
 
-    /**
-     * If no ACL is found in cache, call out to the auth service directly and retrieve the ACL credentials for this
-     * user, if all is correct, the cache should be set after this call as well.
-     *
-     * @param string $receivedUserAccessToken
-     *
-     * @return mixed|null
-     */
-    private function getAclFromAuthService (string $receivedUserAccessToken)
+    private function getAclFromAuthService (string $receivedUserAccessToken): ?array
     {
-        $acl = Cache::tags(['acl'])->get('acl.user.' . Auth::id());
+        $acl = Cache::get($this->cacheKeyAcl(Auth::id()));
 
         if (!$acl) {
             $body = ['headers' => ['Authorization' => 'Bearer ' . $receivedUserAccessToken,],];
@@ -284,51 +210,41 @@ class Introspector
         return $acl;
     }
 
-    /**
-     * Perform a POST request to the endpoint given by the $url. Post the body array and decode the
-     * response ( we're assuming the response is JSON )
-     *
-     * @param string $url
-     * @param array $body
-     *
-     * @return array
-     */
     protected function performRequest (string $url, array $body): array
     {
         $guzzle = $this->getClient();
         $response = $guzzle->post($url, $body);
         return json_decode(( string )$response->getBody(), true);
     }
-
-    /**
-     * Returns the max attempts. This defines the maximum number of tries the service can call the auth service
-     * to verify the request.
-     *
-     * @return int
-     */
-    protected function getMaxAttempts ()
+    
+    protected function getMaxAttempts (): int
     {
         return $this->max_attempts;
     }
 
-    /**
-     * Return the Guzzle HTTP Client to use our requests with.
-     *
-     * @return Client
-     */
     private function getClient (): Client
     {
         return $this->client;
     }
-
-    /**
-     * Return the Illuminate Request object
-     *
-     * @return Request
-     */
-    private function getRequest ()
+    
+    private function getRequest (): Request
     {
         return $this->request;
+    }
+
+    private function cacheKeyUserToken(string $userAccessToken): string
+    {
+        return 'introspect:users:' . $userAccessToken;
+    }
+    
+    private function cacheKeyServiceToken(string $serviceCacheKey): string
+    {
+        return 'introspect:service:' . $serviceCacheKey;
+    }
+    
+    private function cacheKeyAcl(?int $userId): string
+    {
+        return 'introspect:acl:user:' . ($userId ?? 'guest');
     }
 
 }
